@@ -8,11 +8,17 @@
 
 struct ResourceLoader
 {
-	bool m_Quit = false;
 	std::thread m_Thread;
 	std::future<void> m_Task;
 
+	bool m_Quit = false;
+	bool m_Ready = false;
+
 	void exit();
+
+	void reset();
+	void wait();
+	void signal();
 
 	// le main du thread
 	void main();

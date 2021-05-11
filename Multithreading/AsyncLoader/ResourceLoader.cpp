@@ -24,6 +24,36 @@ bool loadImage(const char* path)
 
 // ---
 
+void ResourceLoader::reset()
+{
+	// si on a besoin d'un ordonnancement, mais que l'on ne souhaite pas
+	// pour autant faire de Ready une variable atomique, on peut utiliser une fence
+	// qui va agir comme une barriere memoire
+	// ici empeche le reordonnancement des read avant le write 
+	std::atomic_thread_fence(std::memory_order_seq_cst);
+
+	m_Ready = false;
+}
+
+void ResourceLoader::signal()
+{
+	// si on a besoin d'un ordonnancement, mais que l'on ne souhaite pas
+	// pour autant faire de Ready une variable atomique, on peut utiliser une fence
+	// qui va agir comme une barriere memoire
+	// ici empeche le reordonnancement des read avant le write 
+	std::atomic_thread_fence(std::memory_order_seq_cst);
+
+	m_Ready = true;
+}
+
+void ResourceLoader::wait()
+{
+	while (!m_Ready) {
+		std::this_thread::yield();
+		_mm_pause();
+	};
+}
+
 void ResourceLoader::exit()
 {
 	m_Quit = true;
@@ -31,9 +61,12 @@ void ResourceLoader::exit()
 
 void ResourceLoader::main()
 {
-	// code de preparation
+	// todo: code de preparation
 
-	// todo: signal de confirmation demarrage
+	reset();	
+
+	// signal de confirmation demarrage
+	signal();
 
 	while (!m_Quit)
 	{
@@ -42,18 +75,20 @@ void ResourceLoader::main()
 		std::cout << "donnees chargees" << std::endl;
 	}
 
+	// on a bien quit la boucle
 	std::cout << "exit!" << std::endl;
 
-	// todo: signal de confirmation de fin
+	// signal de confirmation de fin (doit etre reset au prealable)
+	signal();	
 
-	// code de nettoyage
+	// todo: code de nettoyage
 }
 
 void ResourceLoader::run()
 {
 	m_Thread = std::thread(&ResourceLoader::main, this);
 	// essayez avec et sans detach pour voir la difference au niveau destructeur
-	//m_Thread.detach();
+	m_Thread.detach();
 }
 
 void ResourceLoader::runTask()

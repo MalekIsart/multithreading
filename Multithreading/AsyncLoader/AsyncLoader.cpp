@@ -26,7 +26,15 @@ struct Application
 	{
 		resourceLoader.run();
 
-		// todo: attente du signal de demarrage
+		// attente du signal de demarrage
+		resourceLoader.wait();
+
+		std::cout << "starting" << std::endl;
+
+		// reinitialisation pour usage
+		// il est possible que le reset() ait lieu avant le wait()
+		// il faut donc une forme de barriere memoire dans reset()
+		resourceLoader.reset();
 
 		// ATTENTION: quittez avec la touche ECHAP/ESC
 
@@ -38,7 +46,16 @@ struct Application
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 
+		std::cout << "user wants to quit" << std::endl;
+
 		resourceLoader.exit();
+
+		// attente du signal de fin
+		resourceLoader.wait();
+
+		//resourceLoader.join();
+
+		std::cout << "quitting" << std::endl;
 	}
 };
 
