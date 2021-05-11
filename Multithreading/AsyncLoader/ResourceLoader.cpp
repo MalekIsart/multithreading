@@ -58,23 +58,15 @@ void ResourceLoader::wait()
 
 void ResourceLoader::waitForWork()
 {
-	std::unique_lock<std::mutex> lock(m_Mutex);
-	// on a le verrou, seul le thread actuel peut modifier m_GotWork
-	m_GotWork = false;
-	// une fois dans le wait, le verrou est relache
-	m_Event.wait(lock, [&]() { return m_GotWork; });
+	while (m_Event.test_and_set(std::memory_order_acquire)) {
+		std::this_thread::yield();
+		_mm_pause();
+	}
 }
 
 void ResourceLoader::notifyWork()
 {
-	{
-		std::unique_lock<std::mutex> lock(m_Mutex);
-		// on a le verrou, seul le thread actuel peut modifier m_GotWork
-		m_GotWork = true;
-	} // comme on utilise un lock RAII, il est deverrouille en fin de scope
-
-	// pour info, un lock introduit un ordre sequentiel, le notify a toujours lieu apres
-	m_Event.notify_one();
+	m_Event.clear(std::memory_order_release);
 }
 
 // ---
