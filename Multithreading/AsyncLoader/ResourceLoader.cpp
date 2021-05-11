@@ -22,7 +22,7 @@ bool loadImage(const char* path)
 	// todo: push une structure Bitmap ou Texture dans une Queue
 }
 
-// ---
+// spin-wait ---
 
 void ResourceLoader::reset()
 {
@@ -54,6 +54,31 @@ void ResourceLoader::wait()
 	};
 }
 
+// Notify
+
+void ResourceLoader::waitForWork()
+{
+	std::unique_lock<std::mutex> lock(m_Mutex);
+	// on a le verrou, seul le thread actuel peut modifier m_GotWork
+	m_GotWork = false;
+	// une fois dans le wait, le verrou est relache
+	m_Event.wait(lock, [&]() { return m_GotWork; });
+}
+
+void ResourceLoader::notifyWork()
+{
+	{
+		std::unique_lock<std::mutex> lock(m_Mutex);
+		// on a le verrou, seul le thread actuel peut modifier m_GotWork
+		m_GotWork = true;
+	} // comme on utilise un lock RAII, il est deverrouille en fin de scope
+
+	// pour info, un lock introduit un ordre sequentiel, le notify a toujours lieu apres
+	m_Event.notify_one();
+}
+
+// ---
+
 void ResourceLoader::exit()
 {
 	m_Quit = true;
@@ -70,6 +95,9 @@ void ResourceLoader::main()
 
 	while (!m_Quit)
 	{
+		// on ne charge l'image que si le thread principal nous le demande
+		waitForWork();
+
 		// routine principale
 		loadImage("../data/ironman.dff.png");
 		std::cout << "donnees chargees" << std::endl;

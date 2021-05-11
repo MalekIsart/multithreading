@@ -41,6 +41,8 @@ struct Application
 		while (!shouldQuit())
 		{
 			std::cout << "new frame" << std::endl;
+			
+			resourceLoader.notifyWork();
 
 			// emule un traitement (une synchro verticale par ex.)
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
