@@ -22,37 +22,21 @@ bool loadImage(const char* path)
 	// todo: push une structure Bitmap ou Texture dans une Queue
 }
 
+// promise ---
+
+void ResourceLoader::reset() {
+	m_Ready = std::promise<void>();
+}
+
+void ResourceLoader::signal() {
+	m_Ready.set_value();
+}
+
+void ResourceLoader::wait() {
+	m_Ready.get_future().wait();
+}
+
 // ---
-
-void ResourceLoader::reset()
-{
-	// si on a besoin d'un ordonnancement, mais que l'on ne souhaite pas
-	// pour autant faire de Ready une variable atomique, on peut utiliser une fence
-	// qui va agir comme une barriere memoire
-	// ici empeche le reordonnancement des read avant le write 
-	std::atomic_thread_fence(std::memory_order_seq_cst);
-
-	m_Ready = false;
-}
-
-void ResourceLoader::signal()
-{
-	// si on a besoin d'un ordonnancement, mais que l'on ne souhaite pas
-	// pour autant faire de Ready une variable atomique, on peut utiliser une fence
-	// qui va agir comme une barriere memoire
-	// ici empeche le reordonnancement des read avant le write 
-	std::atomic_thread_fence(std::memory_order_seq_cst);
-
-	m_Ready = true;
-}
-
-void ResourceLoader::wait()
-{
-	while (!m_Ready) {
-		std::this_thread::yield();
-		_mm_pause();
-	};
-}
 
 void ResourceLoader::exit()
 {

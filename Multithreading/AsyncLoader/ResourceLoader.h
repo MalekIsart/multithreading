@@ -10,9 +10,9 @@ struct ResourceLoader
 {
 	std::thread m_Thread;
 	std::future<void> m_Task;
+	std::promise<void> m_Ready;
 
 	bool m_Quit = false;
-	bool m_Ready = false;
 
 	void exit();
 

@@ -24,7 +24,7 @@ struct Application
 
 	void run()
 	{
-		resourceLoader.run();
+		resourceLoader.runTask();
 
 		// attente du signal de demarrage
 		resourceLoader.wait();
