@@ -58,9 +58,20 @@ void ResourceLoader::wait()
 
 void ResourceLoader::waitForWork()
 {
-	while (! (!m_Event.load(std::memory_order_relaxed) && !m_Event.exchange(true, std::memory_order_acquire))) {
-		std::this_thread::yield();
-		_mm_pause();
+	// Par rapport a l'exemple 02b, on separe concretement eu deux le test d'echange et la lecture
+
+	for (;;)
+	{
+		// si l'ancienne valeur (retournee par exchange()) vaut false, c'est qu'on a ete signale 
+		if (!m_Event.exchange(true, std::memory_order_acquire))
+			return;
+
+		// autrement, cela signifie que l'on vient de mettre la variable a vrai, on attend qu'elle
+		// passe a false, mais en etant sympa avec le systeme
+		while (m_Event.load(std::memory_order_relaxed)) {
+			std::this_thread::yield();
+			_mm_pause();
+		}
 	}
 }
 
