@@ -58,7 +58,7 @@ void ResourceLoader::wait()
 
 void ResourceLoader::waitForWork()
 {
-	while (m_Event.test_and_set(std::memory_order_acquire)) {
+	while (! (!m_Event.load(std::memory_order_relaxed) && !m_Event.exchange(true, std::memory_order_acquire))) {
 		std::this_thread::yield();
 		_mm_pause();
 	}
@@ -66,7 +66,7 @@ void ResourceLoader::waitForWork()
 
 void ResourceLoader::notifyWork()
 {
-	m_Event.clear(std::memory_order_release);
+	m_Event.store(false, std::memory_order_release);
 }
 
 // ---

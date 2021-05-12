@@ -11,7 +11,7 @@ struct ResourceLoader
 	std::thread m_Thread;
 	std::future<void> m_Task;
 
-	std::atomic_flag m_Event = ATOMIC_FLAG_INIT;
+	std::atomic<bool> m_Event = {};
 
 	bool m_Quit = false;
 	bool m_Ready = false;
