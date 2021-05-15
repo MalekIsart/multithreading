@@ -1,7 +1,5 @@
 #include "ThreadPool.h"
 
-#include <thread>
-
 #include <iostream>
 
 void ThreadPool::exit() 
@@ -33,7 +31,7 @@ void ThreadPool::wait_idle()
 		m_Signal.signal();
 		// dans notre cas le yield fait perdre de precieuses millisecondes
 		//std::this_thread::yield();
-		_mm_pause();
+		PAUSE();
 	}
 }
 
