@@ -65,14 +65,15 @@ struct ThreadPool
 
 	CACHE_ALIGN std::atomic<size_t> m_SyncCounter = {};
 	CACHE_ALIGN std::atomic<size_t> m_JobCount = {};
-	CACHE_ALIGN std::atomic<size_t> m_FinishedCount = {};		
+	CACHE_ALIGN std::atomic<size_t> m_FinishedCount = {};	
+	CACHE_ALIGN std::atomic<size_t> m_BatchCounter = {};
 	CACHE_ALIGN bool m_Quit = false;
 
-	std::function<void()> m_Job;
+	std::function<void(int)> m_Job;
 
 	std::mutex m_DebugMutex;
 
-	void executeBatch(const std::function<void()>& job, int count = 1);
+	void executeBatch(const std::function<void(int)>& job, int count = 1);
 
 	inline void setJobCount(int i) { 
 		m_JobCount.store(i); 
@@ -90,7 +91,5 @@ struct ThreadPool
 
 	void start(size_t count = 1);
 	void clean();
-
-
 };
 

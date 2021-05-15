@@ -12,10 +12,13 @@ void ThreadPool::exit()
 }
 
 
-void ThreadPool::executeBatch(const std::function<void()>& job, int count) 
+void ThreadPool::executeBatch(const std::function<void(int)>& job, int count) 
 {
 	m_Job = job;
 	setJobCount(count);
+	m_BatchCounter.store(0);
+
+	m_Signal.signal();
 }
 
 void ThreadPool::notify_one()
@@ -98,7 +101,8 @@ void ThreadPool::start(size_t count)
 
 					if (!m_Quit)
 					{
-						m_Job();
+						int j = m_BatchCounter++;
+						m_Job(j);
 
 						workCount++;
 						/*{

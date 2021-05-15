@@ -86,13 +86,11 @@ struct Application
 			Data* dataSet = new Data[dataCount];
 			for (int i = 0; i < 10; i++)
 			{
-				auto t = timer("Job test: ");
+				auto t = timer("Job test ");
 
-				std::atomic<int> k{0};
 				pool.executeBatch(
-					[&dataSet, &k] 
+					[&dataSet](int j)
 					{ 
-						int j = ++k; 
 						dataSet[j].Compute(j); 
 					}
 				, dataCount);
