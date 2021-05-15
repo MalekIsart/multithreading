@@ -8,7 +8,7 @@
 #include <future>
 
 #if defined(_MSC_VER)
-#define PAUSE() YieldProcessor()
+#define PAUSE() _mm_pause()
 #elif defined(__arm64__)
 #define PAUSE() __asm__ __volatile__ ("yield")
 #elif defined(__GNUC__) || defined(__clang__)
