@@ -40,7 +40,7 @@ struct Application
 		~timer()
 		{
 			auto end = std::chrono::high_resolution_clock::now();
-			std::cout << name << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds" << std::endl;
+			std::cout << name.c_str() << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " milliseconds" << std::endl;
 		}
 	};
 
