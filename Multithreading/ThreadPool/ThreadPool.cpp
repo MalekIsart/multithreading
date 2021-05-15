@@ -12,11 +12,36 @@ void ThreadPool::exit()
 }
 
 
-void ThreadPool::executeBatch(const std::function<void()>& job, int count) 
+void ThreadPool::executeBatch(const std::function<void(int)>& job, int count) 
 {
+	m_BatchCounter.store(0);
 	m_Job = job;
 	setJobCount(count);
+
+	m_Signal.signal();
 }
+
+void ThreadPool::dispatch(const std::function<void(int)>& job, int count, int groupSize)
+{
+	int workGroupSize = count / m_Threads.size();
+
+	m_BatchCounter.store(0);
+	m_GroupSize = workGroupSize;
+	setJobCount(m_Threads.size());
+	
+	m_Job = job;
+
+	m_Signal.signal();
+
+	// le boss travaille un peu pour finir le reste si necessaire
+
+	int remainder = count - workGroupSize * m_Threads.size();
+	int startIndex = count - remainder;
+	for (int i = startIndex; i < count; i++) {
+		job(i);
+	}
+}
+
 
 void ThreadPool::notify_one()
 {
@@ -92,21 +117,31 @@ void ThreadPool::start(size_t count)
 
 				size_t workCount = 0;
 
-				for (;;) {
-
+				for (;;) 
+				{
 					m_Signal.wait();
 
 					if (!m_Quit)
 					{
-						m_Job();
+						if (m_BatchCounter < m_Threads.size())
+						{
+							int id = m_BatchCounter++;
+							int start = id * m_GroupSize;
+							int end = start + m_GroupSize;
+							for (int i = start; i < end; i++)
+							{
+								m_Job(i);
+								workCount++;
+							}
 
-						workCount++;
-						/*{
-							std::lock_guard<std::mutex> lock(m_DebugMutex);
-							std::cout << "[" << index << "] travail #" << workCount << std::endl;
-						}*/
 
-						m_FinishedCount++;
+							/*{
+								std::lock_guard<std::mutex> lock(m_DebugMutex);
+								std::cout << "[" << index << "] travail #" << workCount << std::endl;
+							}*/
+
+							m_FinishedCount++;
+						}
 					}
 					else {
 						break;

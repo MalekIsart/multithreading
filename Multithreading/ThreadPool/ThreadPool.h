@@ -7,6 +7,7 @@
 #include <future>
 
 #define USE_ATOMIC_EVENT 1
+#define USE_ALIGNED_ATOMICS 1
 
 struct Event
 {
@@ -52,7 +53,7 @@ struct Event
 	}
 };
 
-#if 1
+#if USE_ALIGNED_ATOMICS
 #define CACHE_ALIGN alignas(64)
 #else
 #define CACHE_ALIGN 
@@ -63,16 +64,20 @@ struct ThreadPool
 	std::vector<std::thread> m_Threads;
 	Event m_Signal;
 
+	std::atomic<int> m_BatchCounter = {};
+	int m_GroupSize = 1;
 	CACHE_ALIGN std::atomic<size_t> m_SyncCounter = {};
 	CACHE_ALIGN std::atomic<size_t> m_JobCount = {};
 	CACHE_ALIGN std::atomic<size_t> m_FinishedCount = {};		
 	CACHE_ALIGN bool m_Quit = false;
 
-	std::function<void()> m_Job;
+	std::function<void(int)> m_Job;
 
 	std::mutex m_DebugMutex;
 
-	void executeBatch(const std::function<void()>& job, int count = 1);
+	void executeBatch(const std::function<void(int)>& job, int count = 1);
+
+	void dispatch(const std::function<void(int)>& job, int count, int groupSize);
 
 	inline void setJobCount(int i) { 
 		m_JobCount.store(i); 

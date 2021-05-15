@@ -86,18 +86,15 @@ struct Application
 			Data* dataSet = new Data[dataCount];
 			for (int i = 0; i < 10; i++)
 			{
-				auto t = timer("Job test: ");
-
-				std::atomic<int> k{0};
-				pool.executeBatch(
-					[&dataSet, &k] 
-					{ 
-						int j = ++k; 
-						dataSet[j].Compute(j); 
+				auto t = timer("Dispatch test ");
+				
+				pool.dispatch(
+					[&dataSet](int j) {
+						dataSet[j].Compute(j);
 					}
-				, dataCount);
-
-				pool.wait_idle();				
+					, dataCount, 10000);
+				
+				pool.wait_idle();
 			}
 			delete[] dataSet;
 		}
