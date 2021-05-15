@@ -1,8 +1,4 @@
 
-
-// pour quitter la boucle : 
-// a ne pas utiliser dans une vraie application
-#include <conio.h>
 #include <iostream>
 
 #include "ThreadPool.h"
@@ -21,17 +17,6 @@ struct Application
 		}
 	};
 	static const uint32_t dataCount = 1000000;
-
-	bool shouldQuit()
-	{
-		if (_kbhit())
-		{
-			int ch = _getch();
-			if (ch == 27)			// ESC 
-				return true;
-		}
-		return false;
-	}
 
 	void Spin(float milliseconds)
 	{

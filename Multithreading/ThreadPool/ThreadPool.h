@@ -7,7 +7,13 @@
 #include <atomic>
 #include <future>
 
-#include <xmmintrin.h>
+#if defined(_MSC_VER)
+#define PAUSE() YieldProcessor()
+#elif defined(__arm64__)
+#define PAUSE() __asm__ __volatile__ ("yield")
+#elif defined(__GNUC__) || defined(__clang__)
+#define PAUSE() __asm__ __volatile__ ("pause")
+#endif
 
 #define USE_ATOMIC_EVENT 1
 #define USE_ALIGNED_ATOMICS 1
@@ -36,7 +42,7 @@ struct Event
 			// passe a false, mais en etant sympa avec le systeme
 			while (m_Event.load(std::memory_order_relaxed)) {
 				std::this_thread::yield();
-				_mm_pause();
+				PAUSE();
 			}
 		}
 #else
