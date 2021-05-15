@@ -2,9 +2,12 @@
 
 #include <vector>
 
+#include <thread>
 #include <mutex>
 #include <atomic>
 #include <future>
+
+#include <xmmintrin.h>
 
 #define USE_ATOMIC_EVENT 1
 #define USE_ALIGNED_ATOMICS 1
