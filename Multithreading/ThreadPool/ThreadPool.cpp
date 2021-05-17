@@ -10,7 +10,7 @@ void ThreadPool::exit()
 }
 
 
-void ThreadPool::executeBatch(const std::function<void(int)>& job, int count) 
+void ThreadPool::executeBatch(const std::function<void(ATOMIC_TYPE)>& job, ATOMIC_TYPE count)
 {
 	m_BatchCounter.store(0);
 	m_Job = job;
@@ -19,7 +19,7 @@ void ThreadPool::executeBatch(const std::function<void(int)>& job, int count)
 	m_Signal.signal();
 }
 
-void ThreadPool::dispatch(const std::function<void(int)>& job, int count, int groupSize)
+void ThreadPool::dispatch(const std::function<void(ATOMIC_TYPE)>& job, ATOMIC_TYPE count, ATOMIC_TYPE groupSize)
 {
 	int workGroupSize = count / m_Threads.size();
 
@@ -33,9 +33,9 @@ void ThreadPool::dispatch(const std::function<void(int)>& job, int count, int gr
 
 	// le boss travaille un peu pour finir le reste si necessaire
 
-	int remainder = count - workGroupSize * m_Threads.size();
-	int startIndex = count - remainder;
-	for (int i = startIndex; i < count; i++) {
+	ATOMIC_TYPE remainder = count - workGroupSize * m_Threads.size();
+	ATOMIC_TYPE startIndex = count - remainder;
+	for (ATOMIC_TYPE i = startIndex; i < count; i++) {
 		job(i);
 	}
 }
@@ -48,12 +48,16 @@ void ThreadPool::notify_one()
 
 void ThreadPool::wait_idle()
 {
-	while (m_JobCount.load(std::memory_order_relaxed) > m_FinishedCount.load(std::memory_order_relaxed))
+	while (getJobCount() > m_FinishedCount.load(std::memory_order_acquire))
 	{
 		m_Signal.signal();
 		// dans notre cas le yield fait perdre de precieuses millisecondes
-		//std::this_thread::yield();
+#if USE_YIELD
+	#if USE_ATOMIC_SPIN
+		std::this_thread::yield();
+	#endif
 		PAUSE();
+#endif
 	}
 }
 
@@ -121,12 +125,13 @@ void ThreadPool::start(size_t count)
 
 					if (!m_Quit)
 					{
-						if (m_BatchCounter < m_Threads.size())
+						ATOMIC_TYPE id = m_BatchCounter.load(std::memory_order_acquire);
+						if (id < m_Threads.size())
 						{
-							int id = m_BatchCounter++;
-							int start = id * m_GroupSize;
-							int end = start + m_GroupSize;
-							for (int i = start; i < end; i++)
+							m_BatchCounter++;
+							ATOMIC_TYPE start = id * m_GroupSize;
+							ATOMIC_TYPE end = start + m_GroupSize;
+							for (ATOMIC_TYPE i = start; i < end; i++)
 							{
 								m_Job(i);
 								workCount++;
@@ -138,7 +143,7 @@ void ThreadPool::start(size_t count)
 								std::cout << "[" << index << "] travail #" << workCount << std::endl;
 							}*/
 
-							m_FinishedCount++;
+							m_FinishedCount.fetch_add(1, std::memory_order_acquire);
 						}
 					}
 					else {

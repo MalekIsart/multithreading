@@ -16,7 +16,7 @@ struct Application
 			}
 		}
 	};
-	static const uint32_t dataCount = 1000000;
+	static const uint32_t dataCount = 10000000;
 
 	void Spin(float milliseconds)
 	{
@@ -74,7 +74,7 @@ struct Application
 				auto t = timer("Dispatch test ");
 				
 				pool.dispatch(
-					[&dataSet](int j) {
+					[&dataSet](ATOMIC_TYPE j) {
 						dataSet[j].Compute(j);
 					}
 					, dataCount, 10000);

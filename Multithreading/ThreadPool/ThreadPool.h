@@ -16,7 +16,13 @@
 #endif
 
 #define USE_ATOMIC_EVENT 1
+#define USE_ATOMIC_JOBCOUNT 0
 #define USE_ALIGNED_ATOMICS 1
+#if USE_ATOMIC_EVENT == 1
+#define USE_ATOMIC_SPIN 0
+#endif
+#define USE_YIELD 1
+#define ATOMIC_TYPE uint32_t
 
 struct Event
 {
@@ -34,6 +40,15 @@ struct Event
 #if USE_ATOMIC_EVENT
 		for (;;)
 		{
+	#if USE_ATOMIC_SPIN
+			if (!m_Event.load(std::memory_order_acquire)) {
+				return;
+			}
+#if 0//USE_YIELD
+			std::this_thread::yield();
+			PAUSE();
+#endif
+	#else
 			// si l'ancienne valeur (retournee par exchange()) vaut false, c'est qu'on a ete signale 
 			if (!m_Event.exchange(true, std::memory_order_acquire))
 				return;
@@ -41,9 +56,12 @@ struct Event
 			// autrement, cela signifie que l'on vient de mettre la variable a vrai, on attend qu'elle
 			// passe a false, mais en etant sympa avec le systeme
 			while (m_Event.load(std::memory_order_relaxed)) {
+		#if USE_YIELD
 				std::this_thread::yield();
 				PAUSE();
+		#endif
 			}
+	#endif
 		}
 #else
 		std::unique_lock<std::mutex> lock(mutex);
@@ -73,24 +91,41 @@ struct ThreadPool
 	std::vector<std::thread> m_Threads;
 	Event m_Signal;
 
-	std::atomic<int> m_BatchCounter = {};
-	int m_GroupSize = 1;
-	CACHE_ALIGN std::atomic<size_t> m_SyncCounter = {};
+#if USE_ATOMIC_JOBCOUNT
 	CACHE_ALIGN std::atomic<size_t> m_JobCount = {};
-	CACHE_ALIGN std::atomic<size_t> m_FinishedCount = {};		
+#else
+	size_t m_JobCount = 0;
+#endif
+	CACHE_ALIGN std::atomic<ATOMIC_TYPE> m_BatchCounter = {};
+	CACHE_ALIGN std::atomic<ATOMIC_TYPE> m_SyncCounter = {};
+	CACHE_ALIGN std::atomic<ATOMIC_TYPE> m_FinishedCount = {};
+	// padding
 	CACHE_ALIGN bool m_Quit = false;
+	int m_GroupSize = 1;
 
-	std::function<void(int)> m_Job;
+	std::function<void(ATOMIC_TYPE)> m_Job;
 
 	std::mutex m_DebugMutex;
 
-	void executeBatch(const std::function<void(int)>& job, int count = 1);
+	void executeBatch(const std::function<void(ATOMIC_TYPE)>& job, ATOMIC_TYPE count = 1);
 
-	void dispatch(const std::function<void(int)>& job, int count, int groupSize);
+	void dispatch(const std::function<void(ATOMIC_TYPE)>& job, ATOMIC_TYPE count, ATOMIC_TYPE groupSize);
 
-	inline void setJobCount(int i) { 
-		m_JobCount.store(i); 
+	inline void setJobCount(ATOMIC_TYPE count) {
+#if USE_ATOMIC_JOBCOUNT
+		m_JobCount.store(count); 
+#else
+		m_JobCount = count;
+#endif
 		m_FinishedCount.store(0);
+	}
+
+	inline ATOMIC_TYPE getJobCount() const {
+#if USE_ATOMIC_JOBCOUNT
+		return m_JobCount.load(std::memory_order_relaxed);
+#else
+		return m_JobCount;
+#endif
 	}
 
 	void exit();
