@@ -26,12 +26,17 @@ void ThreadPool::notify_one()
 
 void ThreadPool::wait_idle()
 {
-	while (m_JobCount.load(std::memory_order_relaxed) > m_FinishedCount.load(std::memory_order_relaxed))
+	while (getJobCount() > m_FinishedCount.load(std::memory_order_acquire))
 	{
 		m_Signal.signal();
 		// dans notre cas le yield fait perdre de precieuses millisecondes
-		//std::this_thread::yield();
+		// ...sauf dans le cas d'un Spin-Wait
+#if USE_YIELD
+	#if USE_ATOMIC_SPIN
+		std::this_thread::yield();
+	#endif
 		PAUSE();
+#endif
 	}
 }
 
@@ -99,16 +104,19 @@ void ThreadPool::start(size_t count)
 
 					if (!m_Quit)
 					{
-						int j = m_BatchCounter++;
-						m_Job(j);
+						if (m_FinishedCount.load(std::memory_order_acquire) < getJobCount())
+						{
+							int j = m_BatchCounter++;
+							m_Job(j);
 
-						workCount++;
-						/*{
-							std::lock_guard<std::mutex> lock(m_DebugMutex);
-							std::cout << "[" << index << "] travail #" << workCount << std::endl;
-						}*/
+							workCount++;
+							/*{
+								std::lock_guard<std::mutex> lock(m_DebugMutex);
+								std::cout << "[" << index << "] travail #" << workCount << std::endl;
+							}*/
 
-						m_FinishedCount++;
+							m_FinishedCount++;
+						}
 					}
 					else {
 						break;
